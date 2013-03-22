@@ -40,6 +40,7 @@ class BuildCommand extends Command
                 new InputArgument('file', InputArgument::OPTIONAL, 'Json file to use', './satis.json'),
                 new InputArgument('output-dir', InputArgument::OPTIONAL, 'Location where to output built files', null),
                 new InputOption('no-html-output', null, InputOption::VALUE_NONE, 'Turn off HTML view'),
+                new InputOption('twig-template', 't', InputArgument::OPTIONAL, 'Location of twig template to use', null),
             ))
             ->setHelp(<<<EOT
 The <info>build</info> command reads the given json file
@@ -120,7 +121,7 @@ EOT
 
         if ($htmlView) {
             $rootPackage = $composer->getPackage();
-            $this->dumpWeb($packages, $output, $rootPackage, $outputDir);
+            $this->dumpWeb($packages, $output, $rootPackage, $outputDir, $input->getOption('twig-template'));
         }
     }
 
@@ -189,9 +190,9 @@ EOT
         $repoJson->write($repo);
     }
 
-    private function dumpWeb(array $packages, OutputInterface $output, PackageInterface $rootPackage, $directory)
+    private function dumpWeb(array $packages, OutputInterface $output, PackageInterface $rootPackage, $directory, $template = null)
     {
-        $templateDir = __DIR__.'/../../../../views';
+        $templateDir = $template ? pathinfo($template, PATHINFO_DIRNAME) : __DIR__.'/../../../../views';
         $loader = new \Twig_Loader_Filesystem($templateDir);
         $twig = new \Twig_Environment($loader);
 
@@ -209,7 +210,7 @@ EOT
 
         $output->writeln('<info>Writing web view</info>');
 
-        $content = $twig->render('index.html.twig', array(
+        $content = $twig->render($template ? pathinfo($template, PATHINFO_BASENAME) : 'index.html.twig', array(
             'name'          => $name,
             'url'           => $rootPackage->getHomepage(),
             'description'   => $rootPackage->getDescription(),
